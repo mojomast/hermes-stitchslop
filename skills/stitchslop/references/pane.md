@@ -60,6 +60,13 @@ dependency.
 Every action the relay forwards is also written to a small ring buffer and
 drawn over the video, so the preview shows what the agent is doing.
 
+**Agent actions must go through the relay.** Input sent straight to CDP
+(`WS.send({"method": "Input.*"})`) never reaches the ring buffer, so the pane stays
+silent while the pointer moves — that is the one way this feature silently does
+nothing. Drive the UI with `browser.pane_click(x, y)` / `browser.pane_type(text)`,
+or `pane_input(event)` for a raw event, which post to the relay's `/input` with the
+pane token and are therefore both executed *and* animated.
+
 - **What appears.** A click is a cyan pulsing ring with a dark halo and a bright
   core at the exact page coordinate. Inserted text is a rounded bubble that types
   letter by letter with a caret. A key press is a keycap chip at the bottom centre

@@ -157,6 +157,39 @@ def hermes_home() -> Path:
     return get_hermes_home()
 
 
+def pane_input(event: dict, timeout: float = 5.0) -> dict:
+    """Send one input event *through the relay* so the overlay animates it.
+
+    Agent-side actions otherwise go straight to CDP and the relay never sees them:
+    the viewer would stay silent while the agent clicked all over the app. Anything
+    the agent does to the UI should come through here instead of ``WS.send``.
+    """
+    state = read_state()
+    port, token = state.get("relayPort"), state.get("relayToken")
+    if not port or not token:
+        return {"ok": False, "error": "no_relay"}
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/input", data=json.dumps(event).encode(),
+        headers={"x-stitchslop-pane": str(token), "content-type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as fh:
+            return json.loads(fh.read())
+    except OSError as exc:
+        return {"ok": False, "error": "relay_unreachable", "message": str(exc)}
+
+
+def pane_click(x: float, y: float, timeout: float = 5.0) -> dict:
+    """Click at a viewport coordinate, visible in the pane."""
+    down = pane_input({"kind": "mouse", "action": "down", "x": x, "y": y}, timeout)
+    pane_input({"kind": "mouse", "action": "up", "x": x, "y": y}, timeout)
+    return down
+
+
+def pane_type(text: str, timeout: float = 5.0) -> dict:
+    """Type into the focused element, visibly."""
+    return pane_input({"kind": "text", "text": text}, timeout)
+
+
 def chrome_binary() -> Path | None:
     # Prefer the Chromium Hermes already ships (a known-good build for this host),
     # then the system browser, then platform installs.
