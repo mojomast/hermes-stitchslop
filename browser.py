@@ -102,7 +102,8 @@ class WS:
                 raise ConnectionError("cdp closed during handshake")
             head += chunk
         if b"101" not in head.split(b"\r\n")[0]:
-            raise ConnectionError(f"cdp refused: {head.split(b'\r\n')[0]!r}")
+            first = head.split(b"\r\n")[0]
+            raise ConnectionError(f"cdp refused: {first!r}")
         self.buf = head.split(b"\r\n\r\n", 1)[1]
         self._send_lock = threading.Lock()
 
