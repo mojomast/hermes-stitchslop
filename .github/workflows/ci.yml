@@ -1,0 +1,47 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # the plugin itself is stdlib-only; the tests need imaging for the art checks
+      - run: python -m pip install --upgrade pip pillow numpy
+      - run: python -m unittest discover -s tests -v
+
+  manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install pyyaml
+      - name: Manifest parses and declares what it registers
+        run: |
+          python - <<'PY'
+          import re, sys, yaml, pathlib
+          m = yaml.safe_load(pathlib.Path("plugin.yaml").read_text())
+          src = pathlib.Path("__init__.py").read_text()
+          declared = set(m["provides_tools"])
+          registered = set(re.findall(r'name="([a-z_]+)"', src)) | set(re.findall(r'"name":\s*"([a-z_]+)"', src))
+          missing = declared - registered
+          print("declared:", sorted(declared))
+          print("registered:", sorted(registered))
+          if missing:
+              sys.exit(f"declared but not registered: {missing}")
+          if m["manifest_version"] != 2 or m["api_version"] != 1:
+              sys.exit("unexpected manifest/api version")
+          PY

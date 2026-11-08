@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420" font-family="Liberation Sans, Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2b91f8"/>
+    </marker>
+    <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8aa0c0"/>
+    </marker>
+    <style>
+      .box { fill:#ffffff; stroke:#cfd9ea; stroke-width:1.5; }
+      .inner { fill:#eef4ff; stroke:#b9cff0; stroke-width:1.2; }
+      .t { fill:#16233a; font-size:17px; font-weight:600; }
+      .s { fill:#5b6f8e; font-size:12.5px; font-family:DejaVu Sans Mono, ui-monospace, monospace; }
+      .lbl { fill:#33507a; font-size:12px; font-family:DejaVu Sans Mono, ui-monospace, monospace; }
+      .flow { stroke:#2b91f8; stroke-width:2; fill:none; }
+      .back { stroke:#8aa0c0; stroke-width:1.8; fill:none; stroke-dasharray:5 4; }
+    </style>
+  </defs>
+
+  <rect x="1" y="1" width="958" height="418" rx="16" fill="#f7f9fd" stroke="#e3eaf5"/>
+
+  <!-- Chrome / Xvfb -->
+  <rect class="box" x="24" y="46" width="228" height="250" rx="12"/>
+  <text class="t" x="42" y="74">Chrome + Xvfb</text>
+  <text class="s" x="42" y="93">private display, own profile</text>
+  <rect class="inner" x="42" y="112" width="192" height="86" rx="9"/>
+  <text class="t" x="138" y="146" text-anchor="middle" style="font-size:15px">Stitch Slop tab</text>
+  <text class="s" x="138" y="167" text-anchor="middle">the design lives here</text>
+  <text class="s" x="42" y="228">--app=stitchslop.com</text>
+  <text class="s" x="42" y="248">--disable-features=LNA…</text>
+  <text class="s" x="42" y="268">--remote-debugging-port</text>
+
+  <!-- bridge -->
+  <rect class="box" x="330" y="46" width="250" height="92" rx="12"/>
+  <text class="t" x="348" y="76">bridge</text>
+  <text class="s" x="348" y="97">ws://127.0.0.1:8787-8790</text>
+  <text class="s" x="348" y="116">stdlib · protocol 1</text>
+
+  <!-- relay -->
+  <rect class="box" x="330" y="204" width="250" height="92" rx="12"/>
+  <text class="t" x="348" y="234">relay + viewer</text>
+  <text class="s" x="348" y="255">:8791/viewer?t=…</text>
+  <text class="s" x="348" y="274">one capture loop · ~5 fps</text>
+
+  <!-- tools -->
+  <rect class="box" x="668" y="46" width="266" height="92" rx="12"/>
+  <text class="t" x="686" y="76">Hermes tools × 4</text>
+  <text class="s" x="686" y="97" style="font-size:11.5px">status · connect · call · browser</text>
+  <text class="s" x="686" y="116">399 schema tokens</text>
+
+  <!-- pane -->
+  <rect class="box" x="668" y="204" width="266" height="92" rx="12"/>
+  <text class="t" x="686" y="234">preview pane</text>
+  <text class="s" x="686" y="255">the video you watch</text>
+  <text class="s" x="686" y="274">clicks &amp; keys go back</text>
+
+  <!-- flows -->
+  <path class="flow" d="M 234 130 C 280 130, 290 92, 330 92" marker-end="url(#a)"/>
+  <text class="lbl" x="252" y="124">tab dials in</text>
+
+  <path class="flow" d="M 580 78 C 620 78, 630 78, 668 78" marker-end="url(#a)"/>
+  <text class="lbl" x="590" y="64">HTTP + key</text>
+
+  <path class="flow" d="M 801 138 L 801 204" marker-end="url(#a)"/>
+  <text class="lbl" x="812" y="176">viewerUrl</text>
+
+  <path class="flow" d="M 234 240 C 280 240, 290 250, 330 250" marker-end="url(#a)"/>
+  <text class="lbl" x="242" y="232">CDP capture</text>
+
+  <path class="flow" d="M 580 250 C 620 250, 630 250, 668 250" marker-end="url(#a)"/>
+  <text class="lbl" x="588" y="240">frames</text>
+
+  <path class="back" d="M 801 298 L 801 352 L 455 352 L 455 298" marker-end="url(#ag)"/>
+  <text class="lbl" x="628" y="344" fill="#7c8fae" text-anchor="middle">clicks, keys, text</text>
+
+  <text class="s" x="24" y="398" fill="#8296b4">nothing leaves the machine: loopback and the tailnet only</text>
+</svg>

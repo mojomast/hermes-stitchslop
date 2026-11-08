@@ -1,0 +1,13 @@
+[project]
+name = "stitchslop-hermes"
+version = "0.2.0"
+description = "Stitch Slop for Hermes: a live pane and a bridge for the browser embroidery app"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pillow", "numpy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,26 @@
+manifest_version: 2
+api_version: 1
+name: stitchslop
+version: "0.2.0"
+description: >-
+  Work on the embroidery design open in Stitch Slop, watch it in a pane, and digitize
+  artwork into machine stitch files. Ships the bridge its tab dials into (loopback
+  WebSocket, protocol 1 of stitchslop.com/agent), a viewer page that streams a dedicated
+  Chrome window and forwards clicks and keys, four tools, an arc-typesetting and
+  art-prep script, and a bundled skill covering the digitizing workflow.
+  Disclosure: writes ~/.stitchslop (pairing, Chrome profile, exports, logs), starts a
+  loopback WebSocket server and a Chrome process on a private X display, and binds the
+  viewer to loopback plus the Tailscale address only. No outbound network beyond the
+  site itself; no credentials of the user are read.
+author: clanker01
+license: MIT
+homepage: https://github.com/clanker01/stitchslop-hermes
+requires_hermes: ">=0.21.6"
+provides_tools:
+  - stitchslop_status
+  - stitchslop_connect
+  - stitchslop_call
+  - stitchslop_browser
+provides_hooks: []
+provides_middleware: []
+requires_env: []

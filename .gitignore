@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# runtime state — never in the repo
+exports/
+*.log
+*.stitchslop
+
+# the pane's Chrome profile and renders live outside the checkout, but be safe
+profile/
+pane/
+
+.DS_Store

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>banner</title>
+<style>
+  :root {
+    --ink: #060a12;
+    --ink2: #0b1526;
+    --thread: #2b91f8;
+    --thread2: #5470d4;
+    --paper: #e9eefb;
+    --muted: #8fa3c4;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    width: 1600px; height: 440px; overflow: hidden;
+    background:
+      radial-gradient(1100px 520px at 78% 46%, rgba(43,145,248,.20), transparent 62%),
+      radial-gradient(700px 420px at 8% 110%, rgba(84,112,212,.18), transparent 60%),
+      linear-gradient(150deg, var(--ink2) 0%, var(--ink) 58%, #04070d 100%);
+    color: var(--paper);
+    font-family: "Liberation Sans", "Inter", "Helvetica Neue", Arial, sans-serif;
+    position: relative;
+  }
+  /* stitch grid */
+  .grid {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(143,163,196,.22) 1px, transparent 1.2px);
+    background-size: 22px 22px;
+    mask-image: linear-gradient(90deg, rgba(0,0,0,.55), transparent 42%, transparent 58%, rgba(0,0,0,.5));
+    -webkit-mask-image: linear-gradient(90deg, rgba(0,0,0,.55), transparent 42%, transparent 58%, rgba(0,0,0,.5));
+  }
+  .rule { position:absolute; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, rgba(43,145,248,.55), transparent); }
+  .rule.top { top: 0; }
+  .rule.bottom { bottom: 0; }
+
+  .wrap { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 76px; gap: 30px; }
+  .copy { max-width: 860px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: "DejaVu Sans Mono", ui-monospace, monospace;
+    font-size: 13px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--thread);
+    border: 1px solid rgba(43,145,248,.38);
+    background: rgba(43,145,248,.08);
+    border-radius: 999px; padding: 7px 15px 6px;
+  }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--thread); box-shadow: 0 0 12px var(--thread); }
+
+  h1 {
+    margin: 18px 0 0;
+    font-size: 92px; line-height: .92; letter-spacing: -.045em; font-weight: 700;
+    white-space: nowrap;
+    background: linear-gradient(180deg, #ffffff 20%, #cfe0ff 72%, #9dbbec 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  h1 .thin { font-weight: 400; color: #7f93b6; -webkit-text-fill-color: #7f93b6; letter-spacing: -.03em; }
+
+  .sub {
+    margin-top: 16px; font-size: 22px; line-height: 1.45; color: #c3d2ea; max-width: 780px;
+  }
+  .sub b { color: #fff; font-weight: 600; }
+  .sub .accent { color: var(--thread); }
+
+  .row { margin-top: 22px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .tag {
+    font-family: "DejaVu Sans Mono", ui-monospace, monospace;
+    font-size: 12.5px; letter-spacing: .04em; color: #b6c6e0;
+    border: 1px solid rgba(143,163,196,.22); border-radius: 7px;
+    padding: 6px 11px; background: rgba(9,16,28,.55);
+  }
+  .tag b { color: var(--thread); font-weight: 600; }
+
+  /* hoop */
+  .hoop { flex: 0 0 auto; width: 300px; height: 300px; position: relative; }
+  .hoop svg { width: 100%; height: 100%; overflow: visible; }
+  .cap {
+    position: absolute; bottom: -30px; left: 0; right: 0; text-align: center;
+    font-family: "DejaVu Sans Mono", ui-monospace, monospace; font-size: 12px;
+    letter-spacing: .12em; color: #7e93b8;
+  }
+  .spin { transform-origin: 165px 165px; animation: spin 26s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+</style>
+<div class="grid"></div>
+<div class="rule top"></div><div class="rule bottom"></div>
+
+<div class="wrap">
+  <div class="copy">
+    <span class="chip"><span class="dot"></span>Hermes Agent plugin</span>
+    <h1>stitchslop</h1>
+    <div class="sub">
+      Drive the embroidery app from chat — <b>watch it in a pane</b>, digitize art,<br>
+      letter a ring, export <span class="accent">DST · PES · JEF</span>.
+    </div>
+    <div class="row">
+      <span class="tag"><b>4</b> tools</span>
+      <span class="tag"><b>protocol 1</b> bridge</span>
+      <span class="tag">CDP <b>pane</b></span>
+      <span class="tag"><b>399</b> schema tokens</span>
+      <span class="tag">stdlib + <b>0</b> deps</span>
+    </div>
+  </div>
+
+  <div class="hoop">
+    <svg viewBox="0 0 330 330" fill="none">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7cc0ff"/><stop offset="1" stop-color="#2b56c9"/>
+        </linearGradient>
+        <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <circle cx="165" cy="165" r="150" stroke="url(#g)" stroke-width="2.2" stroke-dasharray="7 6" opacity=".85"/>
+      <circle cx="165" cy="165" r="126" stroke="#2b91f8" stroke-width="6.5" opacity=".95" filter="url(#glow)"/>
+      <circle cx="165" cy="165" r="104" stroke="#5470d4" stroke-width="1.4" opacity=".55"/>
+      <g class="spin" stroke="#9cc8ff" stroke-width="1.1" opacity=".5">
+        <circle cx="165" cy="165" r="86" stroke-dasharray="1.5 9"/>
+      </g>
+      <!-- stitch teeth -->
+      <g stroke="#2b91f8" stroke-width="2.4" opacity=".9">
+        <path d="M165 15 v16"/><path d="M165 299 v16"/><path d="M15 165 h16"/><path d="M299 165 h16"/>
+      </g>
+      <!-- needle -->
+      <path d="M232 84 C 246 70, 268 62, 282 56" stroke="#dfe9ff" stroke-width="2.2" stroke-linecap="round" opacity=".9"/>
+      <path d="M228 88 l7 7" stroke="#dfe9ff" stroke-width="3.4" stroke-linecap="round"/>
+      <!-- thread tail -->
+      <path d="M282 56 c 18 4, 22 26, 8 34 c -12 7, -22 -6, -12 -14" stroke="#2b91f8" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>
+      <text x="165" y="172" text-anchor="middle" fill="#dfe9ff" font-family="DejaVu Sans Mono, monospace" font-size="15" letter-spacing="3">HERMES</text>
+    </svg>
+    <div class="cap">5,248 STITCHES · 83.1 MM</div>
+  </div>
+</div>
+</html>
