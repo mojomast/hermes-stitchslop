@@ -70,8 +70,8 @@ drawn over the video, so the preview shows what the agent is doing.
   viewer `/input` posts and for Python callers, and it records there. The viewer
   polls `GET /events?since=<id>` at 8/s and gets a bare JSON list of events with
   monotonic ids and a `ts`. `/events` requires the pane token (`x-stitchslop-pane`),
-  because typed text passes through it. The buffer holds 256 events and returns at
-  most 64 per call.
+  because typed text passes through it. The buffer holds 256 events and returns
+  every buffered event after `<id>`.
 - **Pacing.** Only the animation is queued. Input reaches Chrome the instant it is
   posted; the viewer plays one blip every 320 ms and types at ~36 characters/s
   (28 ms/char). Adjacent text events in one poll are merged into one bubble, key

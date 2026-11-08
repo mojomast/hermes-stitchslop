@@ -33,7 +33,6 @@ from urllib.parse import parse_qs
 SITE = "https://www.stitchslop.com/"
 RELAY_PORTS = (8791, 8792, 8793, 8794)
 EVENT_LIMIT = 256      # actions kept for the viewer; it polls 8x a second
-EVENT_BATCH = 64       # most events returned by one /events call
 DISPLAY = ":99"
 WIDTH, HEIGHT = 1440, 900
 QUALITY = 68
@@ -373,8 +372,7 @@ class Relay:
 
     def events_since(self, since: int) -> list[dict]:
         with self.lock:
-            events = [e for e in self.events if e["id"] > since]
-        return events[-EVENT_BATCH:]
+            return [e for e in self.events if e["id"] > since]
 
     def _capture_loop(self, stop: threading.Event) -> None:
         """Steady stills, one after another, never overlapping a pending one."""
