@@ -75,8 +75,8 @@ drawn over the video, so the preview shows what the agent is doing.
 - **Pacing.** Only the animation is queued. Input reaches Chrome the instant it is
   posted; the viewer plays one blip every 320 ms and types at ~36 characters/s
   (28 ms/char). Adjacent text events in one poll are merged into one bubble, key
-  repeats become one `×N` chip, and a `n queued` badge appears when a burst is
-  longer than two. Nothing is dropped; a long burst is worked through in order.
+  repeats become one `×N` chip, and a `n queued` badge appears once more than one
+  action is waiting. Nothing is dropped; a long burst is worked through in order.
   Events older than the page load are ignored, so a reload does not replay the
   ring buffer.
 - **Toggle.** `stitchslop_browser(action="start", overlay=false)` turns it off;

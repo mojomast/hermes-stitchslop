@@ -3,10 +3,10 @@
 <p align="center">
   <a href="https://github.com/mojomast/hermes-stitchslop/actions/workflows/ci.yml"><img alt="ci" src="https://github.com/mojomast/hermes-stitchslop/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="license" src="https://img.shields.io/badge/license-MIT-2b91f8">
-  <img alt="hermes" src="https://img.shields.io/badge/hermes-%E2%89%A5%200.21.6-2b91f8">
+  <img alt="hermes" src="assets/badges/hermes.svg">
   <img alt="python" src="https://img.shields.io/badge/python-3.10%2B-2b91f8">
-  <img alt="dependencies" src="https://img.shields.io/badge/runtime%20deps-none-2b91f8">
-  <img alt="tools" src="https://img.shields.io/badge/tools-4-2b91f8">
+  <img alt="deps" src="assets/badges/deps.svg">
+  <img alt="tools" src="assets/badges/tools.svg">
 </p>
 
 <h3 align="center">Drive the embroidery app from chat.</h3>
@@ -165,7 +165,7 @@ things that actually broke: the one-time token, the origin allowlist, the contro
 `{"tools": […], "id": null}` envelope shape, export `files[]` persistence (and path traversal),
 the arc typesetter's geometry, and the overlay's event order, token gate and persisted flag.
 
-`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports 443 o200k schema
+`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports 437 o200k schema
 tokens (+38 for the optional `overlay` argument) and one finding — `credential_env` on the bridge's
 `STITCHSLOP_TOKEN` fallback. That fallback exists because the published protocol documents it for
 shell use; the plugin itself never uses it.
