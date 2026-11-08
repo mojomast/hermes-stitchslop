@@ -96,7 +96,7 @@ That badge was made end to end from a chat session: artwork composed, traced to 
 exported.
 
 - 51 objects, **5,248 stitches**, 83.1 × 83.1 mm inside a 100 mm hoop
-- two thread colours, 48 trims, 2 mm of travel, `problems.list` → 0
+- two thread colours, 49 trims, 6.2 m of thread, `problems.list` → 0
 - DST 18 KB and PES 12 KB, committed in [`examples/`](examples/) so you can open them in any
   machine or stitch viewer
 
