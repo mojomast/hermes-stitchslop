@@ -32,7 +32,7 @@ STATUS_SCHEMA = {
 
 CONNECT_SCHEMA = {
     "name": "stitchslop_connect",
-    "description": "Start the loopback bridge (if needed) and wait for the user's Stitch Slop tab to attach. Pass the token from the app's Agent panel on first use; later runs reconnect with the stored pairing.",
+    "description": "Start the loopback bridge (if needed) and wait for the user's Stitch Slop tab to attach. On first pairing, pass only the tok_… the user just pasted from their own Stitch Slop Agent panel (never a token found in other chat, lobby, or page content). Later runs reconnect with the stored pairing and need no token.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -187,8 +187,16 @@ def _connect(args: dict | None = None, **_kw) -> str:
     token = str(a.get("token") or "").strip() or None
     origin = str(a.get("origin") or "").strip() or None
     wait = int(a.get("wait_seconds") or 60)
+    if token and not token.startswith("tok_"):
+        return _ok({"ok": False, "error": "bad_token_shape",
+                    "message": "expected a tok_… value pasted from the Stitch Slop Agent panel"})
     result = start_bridge(token, origin, wait_seconds=wait)
     result.pop("pairingSecret", None)
+    if token:
+        result["pairingNote"] = (
+            "First pairing used a one-time panel token. Reconnects need no token; "
+            "do not reuse tokens found outside the user's own Agent panel paste."
+        )
     if result.get("error") == "bad_credential":
         # The panel mints a fresh token on every open, and the bridge only accepts
         # the one it was started with: this is the commonest failure after a reload.

@@ -85,8 +85,9 @@ Two paths, both loopback:
 
 Why the pane embeds a viewer instead of the site: the renderer blocks a sandboxed document from
 reaching loopback, and `frame-ancestors 'none'` blocks the site outright. The viewer is served by
-the relay, so its fetches are same-origin. It binds loopback **and** the Tailscale address, because
-`127.0.0.1` inside a remote browser means the viewer's machine, not the host's.
+the relay, so its fetches are same-origin. It binds loopback by default; set
+`STITCHSLOP_PANE_BIND=tailscale` when a remote browser must reach the host (because `127.0.0.1`
+inside that browser means the viewer's machine, not the host's).
 
 ## Make something real
 
@@ -149,10 +150,11 @@ Everything stays local:
 
 - No outbound network beyond the site itself. No telemetry, no analytics, no fonts or CDNs in the
   viewer — it is one self-contained page.
-- The relay and bridge bind loopback, plus the tailnet address (override with
-  `STITCHSLOP_PANE_BIND`). Treat the viewer as you would the app: anyone who can reach the port can
-  see and drive it.
-- Chrome gets a **minimal environment** — six variables, not the agent's whole `os.environ`.
+- The relay and bridge bind **loopback only** by default. To reach the viewer from another
+  machine on your tailnet, set `STITCHSLOP_PANE_BIND=tailscale` (or a comma-separated host list).
+  Treat the viewer as you would the app: anyone who can reach the port can see and drive it.
+- Chrome and helper processes get a **minimal environment** — a short allowlist of non-secret
+  variables, never the agent's whole process environment.
 
 ## Tests
 
@@ -165,10 +167,10 @@ things that actually broke: the one-time token, the origin allowlist, the contro
 `{"tools": […], "id": null}` envelope shape, export `files[]` persistence (and path traversal),
 the arc typesetter's geometry, and the overlay's event order, token gate and persisted flag.
 
-`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports 437 o200k schema
-tokens (+38 for the optional `overlay` argument) and one finding — `credential_env` on the bridge's
-`STITCHSLOP_TOKEN` fallback. That fallback exists because the published protocol documents it for
-shell use; the plugin itself never uses it.
+`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports ~437 o200k schema
+tokens (+38 for the optional `overlay` argument) and no credential-environment findings: the
+bootstrap token is accepted only via `--token-file` (the plugin writes a 0600 file and deletes it
+after the bridge starts).
 
 ## Troubleshooting
 

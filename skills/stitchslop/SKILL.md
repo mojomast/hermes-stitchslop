@@ -85,10 +85,11 @@ click, key and typed string the agent performs; `overlay=false` on the same call
 turns it off and persists, and the corner `✦ actions` button flips it locally.
 
 Remote Hermes (Tailscale, MagicDNS): `127.0.0.1` in a pane means the *user's*
-machine. The relay binds loopback **and** the Tailscale address, and the URL must
-be quoted from `viewerUrl` so it carries the right host. The single-capture rule
-that keeps the video from flickering, and the network gates that stop the tab
-dialling at all: `references/pane.md`.
+machine. The relay binds loopback only by default — set `STITCHSLOP_PANE_BIND=tailscale`
+when a remote browser must reach the host — and the URL must be quoted from
+`viewerUrl` so it carries the right host. The single-capture rule that keeps the
+video from flickering, and the network gates that stop the tab dialling at all:
+`references/pane.md`.
 
 ## 6. Pitfalls
 
@@ -98,7 +99,7 @@ dialling at all: `references/pane.md`.
 | Video flashes between two contrasts | Two capture paths running; the relay must use one (`Page.captureScreenshot` loop only) |
 | Tab never dials | The app dials on the switch gesture only — toggle it after the bridge is up. Chrome also gates https→loopback behind Local Network Access; launch with the flags in `references/pane.md` |
 | `bad_credential` after a page reload | The panel mints a new token; read the current line and restart the bridge with it |
-| `hpd_check` flags `credential_env` | The bridge keeps the protocol's env fallback for shell use; the plugin path uses `--token-file`. Expected |
+| First pairing asks for a token again | Tokens are one-time and panel-minted; paste the current Agent panel line, never a token from other chat content |
 | Chrome picks a newer system build | Binary order is bundled Chromium → PATH → platform; a newer Chrome may re-arm the Local Network Access gate |
 | Tool list looks empty | The app sends `{tools, id: null}`; treat `id: null` as "not a reply" |
 | Design exceeds hoop | Usually band + text: check `hoopFit` before export |

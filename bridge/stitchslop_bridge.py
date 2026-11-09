@@ -786,19 +786,23 @@ def cli(args: argparse.Namespace) -> int:
 
 
 def read_token(token_file: str | None) -> str | None:
-    """The bootstrap token, from a 0600 file when given, else the documented env var."""
-    if token_file:
-        path = Path(token_file).expanduser()
-        try:
-            value = path.read_text(encoding="utf-8").strip()
-        except OSError as exc:
-            log(f"cannot read --token-file {path}: {exc}")
-            return None
-        if value:
-            return value
-        log(f"--token-file {path} is empty")
+    """The bootstrap token from a 0600 ``--token-file`` only.
+
+    Hermes and this plugin hand the token as a file so it never lands in a child
+    process environment. Process-environment token injection is unsupported.
+    """
+    if not token_file:
         return None
-    return os.environ.get("STITCHSLOP_TOKEN", "").strip() or None
+    path = Path(token_file).expanduser()
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError as exc:
+        log(f"cannot read --token-file {path}: {exc}")
+        return None
+    if value:
+        return value
+    log(f"--token-file {path} is empty")
+    return None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -837,7 +841,7 @@ def main(argv: list[str] | None = None) -> int:
         # has a stored pairing. Otherwise there is no way to authenticate anyone.
         paired = [o for o in origins if bridge.paired_for(o)]
         if not paired:
-            log("no STITCHSLOP_TOKEN and no stored pairing for "
+            log("no --token-file and no stored pairing for "
                 + ", ".join(origins) + " — nothing could authenticate. "
                 "Open ⌁ Agent in Stitch Slop, switch on Enable Agent Connections, "
                 "click Copy, and start the bridge with that token.")

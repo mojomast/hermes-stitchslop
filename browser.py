@@ -232,6 +232,7 @@ def ensure_display() -> None:
         return
     xvfb = subprocess.Popen(
         ["Xvfb", DISPLAY, "-screen", f"0 {WIDTH + 60}x{HEIGHT + 60}x24", "-nolisten", "tcp"],
+        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
     for _ in range(50):
         if Path(f"/tmp/.X11-unix/X{number}").exists():
@@ -1057,32 +1058,52 @@ def make_handler(relay: Relay, token: str):
 
 
 def bind_hosts() -> list[str]:
-    """Loopback plus the Tailscale address, so a browser on another machine can reach
-    the viewer. Nothing else: the LAN interface stays unserved."""
+    """Viewer listen addresses.
+
+    Default is loopback only. Set ``STITCHSLOP_PANE_BIND`` to a comma-separated
+    host list (for example a Tailscale IP, or the literal ``tailscale`` to
+    discover one) when a remote browser must reach the viewer. The LAN
+    interface is never auto-bound.
+    """
     hosts = ["127.0.0.1"]
     override = (os.environ.get("STITCHSLOP_PANE_BIND") or "").strip()
-    if override:
-        return [h.strip() for h in override.split(",") if h.strip()]
-    try:
-        out = subprocess.run(["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=3)
-        for line in out.stdout.splitlines():
-            ip = line.strip()
-            if ip and ip not in hosts:
-                hosts.append(ip)
-    except (OSError, subprocess.SubprocessError):
-        pass
-    if len(hosts) == 1:
-        try:
-            out = subprocess.run(["ip", "-4", "-o", "addr", "show", "tailscale0"],
-                                 capture_output=True, text=True, timeout=3)
-            for token in out.stdout.split():
-                if "/" in token and token.split("/")[0].count(".") == 3:
-                    ip = token.split("/")[0]
-                    if ip not in hosts:
-                        hosts.append(ip)
-        except (OSError, subprocess.SubprocessError):
-            pass
-    return hosts
+    if not override:
+        return hosts
+    parts = [h.strip() for h in override.split(",") if h.strip()]
+    if parts == ["loopback"] or parts == ["127.0.0.1"]:
+        return ["127.0.0.1"]
+    resolved: list[str] = []
+    for part in parts:
+        if part in {"tailscale", "tailnet"}:
+            try:
+                out = subprocess.run(
+                    ["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=3,
+                    env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
+                )
+                for line in out.stdout.splitlines():
+                    ip = line.strip()
+                    if ip and ip not in resolved:
+                        resolved.append(ip)
+            except (OSError, subprocess.SubprocessError):
+                pass
+            if not resolved:
+                try:
+                    out = subprocess.run(
+                        ["ip", "-4", "-o", "addr", "show", "tailscale0"],
+                        capture_output=True, text=True, timeout=3,
+                        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
+                    )
+                    for token in out.stdout.split():
+                        if "/" in token and token.split("/")[0].count(".") == 3:
+                            ip = token.split("/")[0]
+                            if ip not in resolved:
+                                resolved.append(ip)
+                except (OSError, subprocess.SubprocessError):
+                    pass
+            continue
+        if part not in resolved:
+            resolved.append(part)
+    return resolved or hosts
 
 
 def public_host() -> str:
@@ -1162,6 +1183,7 @@ def ensure_relay(url: str = SITE, overlay: bool | None = None) -> dict:
                 "overlay": bool(state.get("overlay", True))}
 
     proc = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--serve", url],
+                            env=chrome_env(),
                             stdout=subprocess.PIPE, stderr=open(STATE_DIR / "relay.log", "ab"),
                             start_new_session=True)
     line = proc.stdout.readline().decode() if proc.stdout else ""

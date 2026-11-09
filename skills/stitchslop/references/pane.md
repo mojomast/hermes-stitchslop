@@ -38,9 +38,10 @@ dependency.
    a different document and is usually sandboxed, which is why the pane embeds the
    viewer instead of talking to the relay.
 3. **Remote Hermes.** When the user reaches Hermes from another machine, `127.0.0.1`
-   inside a pane is *their* computer. The relay therefore binds loopback **and** the
-   Tailscale address (`STITCHSLOP_PANE_BIND` overrides), and any URL handed to the
-   preview pane must come from `viewerUrl` (which uses `public_host()`).
+   inside a pane is *their* computer. The relay binds **loopback only** by default.
+   Set `STITCHSLOP_PANE_BIND=tailscale` (or an explicit host list) when a remote
+   browser must reach the host, and any URL handed to the preview pane must come
+   from `viewerUrl` (which uses `public_host()`).
 
 ## Pane UX
 
@@ -51,7 +52,7 @@ dependency.
 - Input is forwarded as `{kind:"mouse"|"text"|"key"|"nav"}` to `/input`, gated by
   a per-run token injected into the viewer HTML at serve time.
 - `/viewer` and `/frame.jpg` are open to anyone who can reach the port; keep the
-  relay on the tailnet, never a public interface.
+  relay on loopback (or a private tailnet bind you opted into), never a public interface.
 - A build marker (the token's prefix) is returned by `/ping` and the viewer reloads
   itself when it changes, so a relay restart does not need a manual refresh.
 
@@ -117,10 +118,10 @@ The binary is chosen in this order: the Chromium Hermes ships under
 host), then `PATH`, then platform installs. A newer system Chrome may re-enable the
 Local Network Access gate, so the bundled build is preferred deliberately.
 
-Chrome gets a **minimal environment** — `DISPLAY`, `HOME`, `PATH`, `TMPDIR`, `LANG`,
-`XDG_CACHE_HOME` — never the agent's whole `os.environ`. Handing a browser every API
-key in the process is a needless exposure, and `hpd_check` fails a plugin that does
-it (`child_env_full`).
+Chrome and helper processes get a **minimal environment** — `DISPLAY`, `HOME`,
+`PATH`, `TMPDIR`, `LANG`, `XDG_CACHE_HOME` — never the agent's whole process
+environment. Handing a browser every API key in the process is a needless exposure,
+and `hpd_check` fails a plugin that does it (`child_env_full`).
 
 ## Health checks
 
