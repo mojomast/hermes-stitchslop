@@ -1,7 +1,7 @@
 manifest_version: 2
 api_version: 1
 name: stitchslop
-version: "0.2.0"
+version: "0.2.1"
 description: >-
   Work on the embroidery design open in Stitch Slop, watch it in a pane, and digitize
   artwork into machine stitch files. Ships the bridge its tab dials into (loopback
@@ -10,12 +10,15 @@ description: >-
   art-prep script, and a bundled skill covering the digitizing workflow.
   Disclosure: writes ~/.stitchslop (pairing, Chrome profile, exports, logs), starts a
   loopback WebSocket server and a Chrome process on a private X display, and binds the
-  viewer to loopback plus the Tailscale address only. No outbound network beyond the
-  site itself; no credentials of the user are read.
-author: clanker01
+  viewer to loopback by default (optional STITCHSLOP_PANE_BIND for extra hosts such as
+  a Tailscale address). No outbound network beyond the site itself; no credentials of
+  the user are read. First pairing is pane/hand only (Agent panel tok_… via bridge --token-file);
+  the agent tool refuses model-supplied tokens. Reconnects use the stored pairing.
+author: mojomast
 license: MIT
-homepage: https://github.com/clanker01/stitchslop-hermes
+homepage: https://github.com/mojomast/hermes-stitchslop
 requires_hermes: ">=0.21.6"
+platforms: [linux]
 provides_tools:
   - stitchslop_status
   - stitchslop_connect

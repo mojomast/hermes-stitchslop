@@ -46,24 +46,32 @@ hermes plugins install mojomast/hermes-stitchslop
 hermes plugins enable stitchslop
 ```
 
-Then, in Stitch Slop: open **⌁ Agent** → switch on **Enable Agent Connections** → **Copy**.
-Paste that line to Hermes, or put the token in a tool call:
+Then **pair once by hand** (the agent tool refuses a model-supplied token, same rule as
+Hermagotchi pane-only pairing):
 
-```
-stitchslop_connect(token="tok_…", origin="https://www.stitchslop.com")
+1. In Stitch Slop: open **⌁ Agent** → switch on **Enable Agent Connections** → **Copy**.
+2. Write the `tok_…` into `~/.stitchslop/token` at mode 0600 and start the bridge once:
+
+```sh
+mkdir -p ~/.stitchslop && chmod 700 ~/.stitchslop
+# paste the tok_… into ~/.stitchslop/token, then:
+chmod 600 ~/.stitchslop/token
+python3 bridge/stitchslop_bridge.py --token-file ~/.stitchslop/token
+rm -f ~/.stitchslop/token
 ```
 
-First pairing mints a long-lived secret at `~/.stitchslop/pairing.json` (mode 0600). After that,
-`stitchslop_connect()` with no arguments reattaches. The token itself never enters a shell command
-or a child process's environment: the plugin writes it to a 0600 file, passes `--token-file`, and
-deletes it the moment the bridge is up.
+3. Call `stitchslop_connect()` with **no** token so Hermes waits for the tab. First pairing
+   mints `~/.stitchslop/pairing.json` (0600). Later sessions only need `stitchslop_connect()`.
+
+`stitchslop_connect(token=…)` returns `unsupported_operation` / `pair_via_pane` on purpose —
+chat, lobby, or page content must not be able to talk the agent into pairing.
 
 ## The four tools
 
 | Tool | What it does |
 |---|---|
 | `stitchslop_status` | Bridge, tab, Chrome, relay and pane in one call. Start here when something looks wrong. |
-| `stitchslop_connect` | Starts the bridge, waits for the tab. Takes `token` + `origin` on first use. |
+| `stitchslop_connect` | Starts the bridge and waits for the tab using the stored pairing. Refuses a model-supplied `token` (`pair_via_pane`); first pairing is hand/`--token-file` only. |
 | `stitchslop_call` | Runs one app verb (`scene.describe`, `background.digitize`, `design.export`, …). Images and exports are written to disk and returned as paths. |
 | `stitchslop_browser` | Starts/stops the pane: Xvfb + Chrome + capture relay, returns `viewerUrl`. `overlay=false` turns off the paced click/typing overlay. |
 
@@ -85,8 +93,9 @@ Two paths, both loopback:
 
 Why the pane embeds a viewer instead of the site: the renderer blocks a sandboxed document from
 reaching loopback, and `frame-ancestors 'none'` blocks the site outright. The viewer is served by
-the relay, so its fetches are same-origin. It binds loopback **and** the Tailscale address, because
-`127.0.0.1` inside a remote browser means the viewer's machine, not the host's.
+the relay, so its fetches are same-origin. It binds loopback by default; set
+`STITCHSLOP_PANE_BIND=tailscale` when a remote browser must reach the host (because `127.0.0.1`
+inside that browser means the viewer's machine, not the host's).
 
 ## Make something real
 
@@ -149,10 +158,11 @@ Everything stays local:
 
 - No outbound network beyond the site itself. No telemetry, no analytics, no fonts or CDNs in the
   viewer — it is one self-contained page.
-- The relay and bridge bind loopback, plus the tailnet address (override with
-  `STITCHSLOP_PANE_BIND`). Treat the viewer as you would the app: anyone who can reach the port can
-  see and drive it.
-- Chrome gets a **minimal environment** — six variables, not the agent's whole `os.environ`.
+- The relay and bridge bind **loopback only** by default. To reach the viewer from another
+  machine on your tailnet, set `STITCHSLOP_PANE_BIND=tailscale` (or a comma-separated host list).
+  Treat the viewer as you would the app: anyone who can reach the port can see and drive it.
+- Chrome and helper processes get a **minimal environment** — a short allowlist of non-secret
+  variables, never the agent's whole process environment.
 
 ## Tests
 
@@ -165,10 +175,10 @@ things that actually broke: the one-time token, the origin allowlist, the contro
 `{"tools": […], "id": null}` envelope shape, export `files[]` persistence (and path traversal),
 the arc typesetter's geometry, and the overlay's event order, token gate and persisted flag.
 
-`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports 437 o200k schema
-tokens (+38 for the optional `overlay` argument) and one finding — `credential_env` on the bridge's
-`STITCHSLOP_TOKEN` fallback. That fallback exists because the published protocol documents it for
-shell use; the plugin itself never uses it.
+`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports ~437 o200k schema
+tokens (+38 for the optional `overlay` argument) and no credential-environment findings: the
+bootstrap token is accepted only via `--token-file` (the plugin writes a 0600 file and deletes it
+after the bridge starts).
 
 ## Troubleshooting
 

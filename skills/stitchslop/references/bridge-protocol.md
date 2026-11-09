@@ -54,14 +54,13 @@ The bridge never dials the page and never opens a browser. One tab per bridge.
 
 ## Handing over the token
 
-The bootstrap token is a credential: give the bridge `--token-file <path>` (0600)
-rather than `STITCHSLOP_TOKEN` in the environment, which is readable from
-`/proc/<pid>/environ` by anything running as the same user. The plugin writes
-`~/.stitchslop/token` at 0600, starts the bridge with it, and deletes it as soon as
-the bridge is up — the bridge only reads it once. The env form still works for
-shells, because that is what the published protocol documents; a linter that flags
-any credential-shaped `os.environ` read (hpd's `credential_env`) will flag that
-fallback, and it is the one accepted finding in this plugin.
+The bootstrap token is a credential: give the bridge `--token-file <path>` (0600).
+Never inject it into the process environment — anything running as the same user
+can read `/proc/<pid>/environ`. The plugin writes `~/.stitchslop/token` at 0600,
+starts the bridge with `--token-file`, and deletes the file as soon as the bridge
+is up (the bridge only reads it once). Process-environment token injection is
+unsupported in this plugin, even though some protocol examples mention it for
+shell demos.
 
 ## Control plane
 

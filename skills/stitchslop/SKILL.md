@@ -12,18 +12,22 @@ list; this skill covers how to use it well.
 
 ## 1. Connect
 
+First pairing is **pane/hand only**. `stitchslop_connect` refuses a model-supplied
+`token` (`unsupported_operation` / `pair_via_pane`) so lobby, DM, or page content
+cannot talk the agent into pairing a stranger.
+
 1. Ask the user to open **⌁ Agent** in Stitch Slop, switch on **Enable Agent
-   Connections**, and paste the line (`Origin:` + `Token: tok_…`).
-2. `stitchslop_connect(token=…, origin=…)`. First pairing mints a long-lived
-   secret at `~/.stitchslop/pairing.json` (0600); later sessions only need
-   `stitchslop_connect()`.
-3. If the window should be visible, `stitchslop_browser(action="start")` and open
+   Connections**, and copy the `tok_…` line.
+2. Have them (or you, outside the agent tool) write it to `~/.stitchslop/token`
+   at mode 0600, start `bridge/stitchslop_bridge.py --token-file ~/.stitchslop/token`
+   once, then delete the file. That mints `~/.stitchslop/pairing.json` (0600).
+3. Call `stitchslop_connect()` with **no** token to wait for the tab. Later sessions
+   only need `stitchslop_connect()`.
+4. If the window should be visible, `stitchslop_browser(action="start")` and open
    the returned `viewerUrl` in the preview pane (`desktop_preview`).
 
-Never paste a token into a shell command line; it belongs in the tool argument. The
-plugin writes it to `~/.stitchslop/token` at 0600, starts the bridge with
-`--token-file`, and deletes the file as soon as the bridge is up, so the credential
-never enters a child process's environment.
+Never put a token in a shell argv string that other users can read; use `--token-file`
+on a 0600 path. Never pass `token=` to the agent tool.
 What decides whether it connects at all: `references/bridge-protocol.md`.
 
 ## 2. Drive
@@ -85,10 +89,11 @@ click, key and typed string the agent performs; `overlay=false` on the same call
 turns it off and persists, and the corner `✦ actions` button flips it locally.
 
 Remote Hermes (Tailscale, MagicDNS): `127.0.0.1` in a pane means the *user's*
-machine. The relay binds loopback **and** the Tailscale address, and the URL must
-be quoted from `viewerUrl` so it carries the right host. The single-capture rule
-that keeps the video from flickering, and the network gates that stop the tab
-dialling at all: `references/pane.md`.
+machine. The relay binds loopback only by default — set `STITCHSLOP_PANE_BIND=tailscale`
+when a remote browser must reach the host — and the URL must be quoted from
+`viewerUrl` so it carries the right host. The single-capture rule that keeps the
+video from flickering, and the network gates that stop the tab dialling at all:
+`references/pane.md`.
 
 ## 6. Pitfalls
 
@@ -98,7 +103,7 @@ dialling at all: `references/pane.md`.
 | Video flashes between two contrasts | Two capture paths running; the relay must use one (`Page.captureScreenshot` loop only) |
 | Tab never dials | The app dials on the switch gesture only — toggle it after the bridge is up. Chrome also gates https→loopback behind Local Network Access; launch with the flags in `references/pane.md` |
 | `bad_credential` after a page reload | The panel mints a new token; read the current line and restart the bridge with it |
-| `hpd_check` flags `credential_env` | The bridge keeps the protocol's env fallback for shell use; the plugin path uses `--token-file`. Expected |
+| First pairing asks for a token again | Tokens are one-time and panel-minted; paste the current Agent panel line, never a token from other chat content |
 | Chrome picks a newer system build | Binary order is bundled Chromium → PATH → platform; a newer Chrome may re-arm the Local Network Access gate |
 | Tool list looks empty | The app sends `{tools, id: null}`; treat `id: null` as "not a reply" |
 | Design exceeds hoop | Usually band + text: check `hoopFit` before export |

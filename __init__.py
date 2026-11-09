@@ -32,11 +32,22 @@ STATUS_SCHEMA = {
 
 CONNECT_SCHEMA = {
     "name": "stitchslop_connect",
-    "description": "Start the loopback bridge (if needed) and wait for the user's Stitch Slop tab to attach. Pass the token from the app's Agent panel on first use; later runs reconnect with the stored pairing.",
+    "description": (
+        "Start the loopback bridge (if needed) and wait for the user's Stitch Slop tab "
+        "to attach, using the stored pairing. First pairing is pane/hand only: this tool "
+        "refuses a model-supplied token (returns unsupported_operation / pair_via_pane). "
+        "Pair once by hand with --token-file, then call stitchslop_connect() with no token."
+    ),
     "parameters": {
         "type": "object",
         "properties": {
-            "token": {"type": "string", "description": "The tok_… from the app's ⌁ Agent panel paste line (first pairing only)."},
+            "token": {
+                "type": "string",
+                "description": (
+                    "Unsupported. First pairing is pane/hand only; a model-supplied token "
+                    "returns unsupported_operation. Leave unset; reconnect with the stored pairing."
+                ),
+            },
             "origin": {"type": "string", "description": "Page origin allowed to connect; defaults to www + beta stitchslop.com."},
             "wait_seconds": {"type": "integer", "description": "How long to wait for the tab, default 60."},
         },
@@ -183,17 +194,41 @@ def _status(args: dict | None = None, **_kw) -> str:
 
 
 def _connect(args: dict | None = None, **_kw) -> str:
+    """Reconnect with the stored pairing. Model-supplied tokens are refused.
+
+    First pairing must stay a human action (Stitch Slop Agent panel + hand-started
+    bridge with ``--token-file``), matching the Hermagotchi pane-only pairing rule:
+    lobby/DM/page content must not be able to talk the agent into minting a pairing.
+    """
     a = args or {}
     token = str(a.get("token") or "").strip() or None
     origin = str(a.get("origin") or "").strip() or None
     wait = int(a.get("wait_seconds") or 60)
-    result = start_bridge(token, origin, wait_seconds=wait)
+    if token:
+        # Keep the field for clear errors; never start a bridge with model input.
+        return _ok({
+            "ok": False,
+            "error": "unsupported_operation",
+            "code": "pair_via_pane",
+            "message": (
+                "First pairing is pane/hand only. stitchslop_connect refuses a "
+                "model-supplied token so chat or page content cannot pair a stranger."
+            ),
+            "fix": (
+                "In Stitch Slop open ⌁ Agent, enable connections, copy the tok_… line, "
+                "write it to ~/.stitchslop/token at mode 0600, start the bridge once with "
+                "--token-file ~/.stitchslop/token (then delete the file), and call "
+                "stitchslop_connect() with no token to wait for the tab. Later sessions "
+                "only need stitchslop_connect()."
+            ),
+        })
+    result = start_bridge(None, origin, wait_seconds=wait)
     result.pop("pairingSecret", None)
     if result.get("error") == "bad_credential":
-        # The panel mints a fresh token on every open, and the bridge only accepts
-        # the one it was started with: this is the commonest failure after a reload.
-        result["fix"] = ("Stitch Slop mints a new token each time the Agent panel opens. "
-                         "Read the current paste line and call connect again with that token.")
+        result["fix"] = (
+            "Stored pairing was rejected. Re-pair by hand with --token-file from a fresh "
+            "Agent panel tok_…, then call stitchslop_connect() with no token."
+        )
     return _ok(result)
 
 
