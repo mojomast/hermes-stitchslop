@@ -46,24 +46,32 @@ hermes plugins install mojomast/hermes-stitchslop
 hermes plugins enable stitchslop
 ```
 
-Then, in Stitch Slop: open **⌁ Agent** → switch on **Enable Agent Connections** → **Copy**.
-Paste that line to Hermes, or put the token in a tool call:
+Then **pair once by hand** (the agent tool refuses a model-supplied token, same rule as
+Hermagotchi pane-only pairing):
 
-```
-stitchslop_connect(token="tok_…", origin="https://www.stitchslop.com")
+1. In Stitch Slop: open **⌁ Agent** → switch on **Enable Agent Connections** → **Copy**.
+2. Write the `tok_…` into `~/.stitchslop/token` at mode 0600 and start the bridge once:
+
+```sh
+mkdir -p ~/.stitchslop && chmod 700 ~/.stitchslop
+# paste the tok_… into ~/.stitchslop/token, then:
+chmod 600 ~/.stitchslop/token
+python3 bridge/stitchslop_bridge.py --token-file ~/.stitchslop/token
+rm -f ~/.stitchslop/token
 ```
 
-First pairing mints a long-lived secret at `~/.stitchslop/pairing.json` (mode 0600). After that,
-`stitchslop_connect()` with no arguments reattaches. The token itself never enters a shell command
-or a child process's environment: the plugin writes it to a 0600 file, passes `--token-file`, and
-deletes it the moment the bridge is up.
+3. Call `stitchslop_connect()` with **no** token so Hermes waits for the tab. First pairing
+   mints `~/.stitchslop/pairing.json` (0600). Later sessions only need `stitchslop_connect()`.
+
+`stitchslop_connect(token=…)` returns `unsupported_operation` / `pair_via_pane` on purpose —
+chat, lobby, or page content must not be able to talk the agent into pairing.
 
 ## The four tools
 
 | Tool | What it does |
 |---|---|
 | `stitchslop_status` | Bridge, tab, Chrome, relay and pane in one call. Start here when something looks wrong. |
-| `stitchslop_connect` | Starts the bridge, waits for the tab. Takes `token` + `origin` on first use. |
+| `stitchslop_connect` | Starts the bridge and waits for the tab using the stored pairing. Refuses a model-supplied `token` (`pair_via_pane`); first pairing is hand/`--token-file` only. |
 | `stitchslop_call` | Runs one app verb (`scene.describe`, `background.digitize`, `design.export`, …). Images and exports are written to disk and returned as paths. |
 | `stitchslop_browser` | Starts/stops the pane: Xvfb + Chrome + capture relay, returns `viewerUrl`. `overlay=false` turns off the paced click/typing overlay. |
 

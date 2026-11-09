@@ -12,8 +12,8 @@ description: >-
   loopback WebSocket server and a Chrome process on a private X display, and binds the
   viewer to loopback by default (optional STITCHSLOP_PANE_BIND for extra hosts such as
   a Tailscale address). No outbound network beyond the site itself; no credentials of
-  the user are read. First pairing accepts a one-time token the user pasted from the
-  Stitch Slop Agent panel; reconnects use the stored pairing.
+  the user are read. First pairing is pane/hand only (Agent panel tok_… via bridge --token-file);
+  the agent tool refuses model-supplied tokens. Reconnects use the stored pairing.
 author: mojomast
 license: MIT
 homepage: https://github.com/mojomast/hermes-stitchslop
