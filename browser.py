@@ -14,6 +14,8 @@ carries pixels and events over loopback.
 from __future__ import annotations
 
 import base64
+import hmac
+import ipaddress
 import json
 import os
 import re
@@ -28,7 +30,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 SITE = "https://www.stitchslop.com/"
 RELAY_PORTS = (8791, 8792, 8793, 8794)
@@ -42,11 +44,109 @@ CHROME_PATHS = (
     Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
     Path("/snap/bin/chromium"),
 )
-ALLOWED_ORIGIN = re.compile(r"^(https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?|app://[^/]*|file://|null)$", re.I)
+# Same-origin viewer fetches need no CORS. Cross-origin grants are limited to
+# loopback HTTP(S) and app:// (Hermes desktop). Opaque (null) and file://
+# origins are not allowed: a sandboxed iframe or a local HTML file must not
+# receive a CORS grant or the input token.
+ALLOWED_ORIGIN = re.compile(r"^(https?://(127\.0\.0\.1|localhost|\[::1\])(:\d+)?|app://[^/]*)$", re.I)
+TAILSCALE_V4 = ipaddress.ip_network("100.64.0.0/10")
+TAILSCALE_V6 = ipaddress.ip_network("fd7a:115c:a1e0::/48")
 
 
 def log(msg: str) -> None:
     print(f"[stitchslop-browser] {msg}", file=sys.stderr, flush=True)
+
+
+def token_equal(provided: str | None, expected: str) -> bool:
+    """Constant-time token compare. Empty values never match."""
+    a = (provided or "").encode("utf-8")
+    b = (expected or "").encode("utf-8")
+    if not a or not b or len(a) != len(b):
+        hmac.compare_digest(b or b"x", b or b"x")
+        return False
+    return hmac.compare_digest(a, b)
+
+
+def request_token(handler: BaseHTTPRequestHandler) -> str:
+    """Token from the pane header, or from ``?t=`` (an <img> cannot set headers)."""
+    header = handler.headers.get("x-stitchslop-pane") or ""
+    query = parse_qs(handler.path.partition("?")[2], keep_blank_values=False)
+    quoted = (query.get("t") or [""])[0]
+    return header or quoted
+
+
+def query_token(handler: BaseHTTPRequestHandler) -> str:
+    query = parse_qs(handler.path.partition("?")[2], keep_blank_values=False)
+    return (query.get("t") or [""])[0]
+
+
+def host_header_matches(raw: str, bind: str, port: int) -> bool:
+    """True when Host is exactly this socket's bind address with port."""
+    header = (raw or "").strip()
+    if not header:
+        return False
+    if ":" in bind and not bind.startswith("["):
+        expected = f"[{bind}]:{port}"
+    else:
+        expected = f"{bind}:{port}"
+    return header.casefold() == expected.casefold()
+
+
+def host_header_ok(handler: BaseHTTPRequestHandler) -> bool:
+    """Reject any Host that is not this server's bind address (with port)."""
+    bind, port = handler.server.server_address[0], handler.server.server_address[1]
+    return host_header_matches(handler.headers.get("Host") or "", bind, port)
+
+
+def allowed_nav_url(url: str) -> tuple[bool, str]:
+    """Only https://stitchslop.com and its subdomains may be navigated to."""
+    raw = (url or "").strip()
+    if not raw:
+        return False, "missing url"
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return False, "invalid url"
+    if parsed.scheme.lower() != "https":
+        return False, "only https://stitchslop.com and its subdomains are allowed"
+    if parsed.username is not None or parsed.password is not None:
+        return False, "credentials in the url are not allowed"
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if not host:
+        return False, "missing host"
+    try:
+        ipaddress.ip_address(host)
+        return False, "IP addresses are not allowed"
+    except ValueError:
+        pass
+    if parsed.port not in (None, 443):
+        return False, "only the default https port is allowed"
+    if host == "stitchslop.com" or host.endswith(".stitchslop.com"):
+        return True, ""
+    return False, "only https://stitchslop.com and its subdomains are allowed"
+
+
+def classify_bind_host(host: str) -> str:
+    """Return 'loopback', 'tailscale', or 'denied'. Hostnames are denied."""
+    raw = (host or "").strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        raw = raw[1:-1]
+    lowered = raw.lower()
+    # Wildcards and names for INADDR_ANY are denied. Literal unspecified
+    # addresses (all-zeros v4/v6) are caught by ip.is_unspecified below.
+    if lowered in {"*", "inaddr_any", "in6addr_any"}:
+        return "denied"
+    try:
+        ip = ipaddress.ip_address(raw)
+    except ValueError:
+        return "denied"
+    if ip.is_unspecified or ip.is_multicast or ip.is_link_local:
+        return "denied"
+    if ip.is_loopback:
+        return "loopback"
+    if ip in TAILSCALE_V4 or ip in TAILSCALE_V6:
+        return "tailscale"
+    return "denied"
 
 
 def state_path() -> Path:
@@ -527,6 +627,9 @@ class Relay:
                             mods=int(event.get("mods") or 0))
             elif kind == "nav":
                 url = str(event.get("url") or SITE)
+                ok, reason = allowed_nav_url(url)
+                if not ok:
+                    return {"ok": False, "error": "nav_forbidden", "message": reason, "url": url}
                 ws.send({"id": self.next_id(), "method": "Page.navigate",
                          "params": {"url": url}})
                 self.record("nav", url=url)
@@ -664,7 +767,7 @@ async function tick() {
       relayFancy = j.overlay;
       setFancy(j.overlay);
     }
-    show(null, '/frame.jpg?seq=' + (seq++));
+    show(null, '/frame.jpg?t=' + encodeURIComponent(TOKEN) + '&seq=' + (seq++));
   } catch (e) { stateEl.textContent = 'relay lost'; dot.style.background = '#c0392b'; }
   setTimeout(tick, 130);
 }
@@ -925,6 +1028,20 @@ def make_handler(relay: Relay, token: str):
         def log_message(self, *_args):  # keep the log quiet; the agent has its own
             pass
 
+        def _guard(self) -> bool:
+            """Host must match this socket's bind address (with port)."""
+            if host_header_ok(self):
+                return True
+            self._json(403, {"ok": False, "error": "bad_host"})
+            return False
+
+        def _authed(self, *, query_required: bool = False) -> bool:
+            provided = query_token(self) if query_required else request_token(self)
+            if token_equal(provided, token):
+                return True
+            self._json(401, {"ok": False, "error": "unauthorized"})
+            return False
+
         def _note(self) -> None:
             origin = self.headers.get("Origin") or "(none)"
             key = (self.command, self.path.split("?")[0], origin)
@@ -957,34 +1074,38 @@ def make_handler(relay: Relay, token: str):
 
         def do_OPTIONS(self) -> None:  # noqa: N802
             self._note()
+            if not self._guard():
+                return
             self.send_response(204)
             self._cors()
             self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type, x-stitchslop-pane")
-            # Private Network Access: a file:// renderer reaching 127.0.0.1 is a
-            # private-network request; without this grant Chromium drops it before
-            # it ever leaves the page (no request, no error we can log server-side).
-            self.send_header("Access-Control-Allow-Private-Network", "true")
+            # Deliberately no Access-Control-Allow-Private-Network: a null or
+            # file:// document must not be granted private-network access.
             self.send_header("Access-Control-Max-Age", "600")
             self.end_headers()
 
         def do_GET(self) -> None:  # noqa: N802
             self._note()
+            if not self._guard():
+                return
             route = self.path.split("?")[0]
             if route == "/ping":
+                if not self._authed():
+                    return
                 with relay.lock:
                     seq = relay.frame_seq
+                # Never include the input token. `build` is a short prefix so the
+                # viewer can reload after a relay restart without leaking it.
                 payload = {"ok": True, "connected": relay.connected, "frames": seq,
                            "width": WIDTH, "height": HEIGHT, "error": relay.last_error,
                            "overlay": relay.overlay, "build": token[:8]}
-                # The pane is a loopback-origin document; a remote page gets no token,
-                # and without it /input refuses the request.
-                origin = self.headers.get("Origin") or ""
-                if origin and ALLOWED_ORIGIN.match(origin):
-                    payload["token"] = token
                 self._json(200, payload)
                 return
             if route in ("/viewer", "/"):
+                # Serve the page only when ?t= matches; a header alone is not enough.
+                if not self._authed(query_required=True):
+                    return
                 html = (VIEWER_HTML.replace("__TOKEN__", token).replace("__BUILD__", token[:8])
                         .replace("__W__", str(WIDTH)).replace("__H__", str(HEIGHT)))
                 data = html.encode()
@@ -998,8 +1119,7 @@ def make_handler(relay: Relay, token: str):
             if route == "/events":
                 # Typed text can pass through here, so it takes the same token
                 # as /input. The viewer is same-origin; the token is the boundary.
-                if self.headers.get("x-stitchslop-pane") != token:
-                    self._json(401, {"ok": False, "error": "unauthorized"})
+                if not self._authed():
                     return
                 query = parse_qs(self.path.partition("?")[2])
                 try:
@@ -1009,6 +1129,8 @@ def make_handler(relay: Relay, token: str):
                 self._json(200, relay.events_since(since))
                 return
             if route == "/frame.jpg":
+                if not self._authed():
+                    return
                 with relay.lock:
                     data = relay.frame
                     seq = relay.frame_seq
@@ -1028,6 +1150,8 @@ def make_handler(relay: Relay, token: str):
 
         def do_POST(self) -> None:  # noqa: N802
             self._note()
+            if not self._guard():
+                return
             route = self.path.split("?")[0]
             if route not in ("/input", "/overlay"):
                 self._json(404, {"ok": False, "error": "not_found"})
@@ -1036,8 +1160,7 @@ def make_handler(relay: Relay, token: str):
             if origin and not ALLOWED_ORIGIN.match(origin):
                 self._json(403, {"ok": False, "error": "bad_origin"})
                 return
-            if self.headers.get("x-stitchslop-pane") != token:
-                self._json(401, {"ok": False, "error": "unauthorized"})
+            if not self._authed():
                 return
             try:
                 length = int(self.headers.get("Content-Length") or 0)
@@ -1057,13 +1180,45 @@ def make_handler(relay: Relay, token: str):
     return Handler
 
 
+def _discover_tailscale_ips() -> list[str]:
+    found: list[str] = []
+    try:
+        out = subprocess.run(
+            ["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=3,
+            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
+        )
+        for line in out.stdout.splitlines():
+            ip = line.strip()
+            if ip and ip not in found:
+                found.append(ip)
+    except (OSError, subprocess.SubprocessError):
+        pass
+    if not found:
+        try:
+            out = subprocess.run(
+                ["ip", "-4", "-o", "addr", "show", "tailscale0"],
+                capture_output=True, text=True, timeout=3,
+                env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
+            )
+            for token in out.stdout.split():
+                if "/" in token and token.split("/")[0].count(".") == 3:
+                    ip = token.split("/")[0]
+                    if ip not in found:
+                        found.append(ip)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return found
+
+
 def bind_hosts() -> list[str]:
     """Viewer listen addresses.
 
-    Default is loopback only. Set ``STITCHSLOP_PANE_BIND`` to a comma-separated
-    host list (for example a Tailscale IP, or the literal ``tailscale`` to
-    discover one) when a remote browser must reach the viewer. The LAN
-    interface is never auto-bound.
+    Default is loopback only (``127.0.0.1``). Wildcards (``0.0.0.0``, ``::``)
+    and any public, LAN, or link-local address are refused. A Tailscale
+    address (``100.64.0.0/10`` or ``fd7a:115c:a1e0::/48``) is accepted only
+    as an explicit opt-in via ``STITCHSLOP_PANE_BIND`` (a comma-separated
+    host list, or the literal ``tailscale`` to discover one). Loopback is
+    always kept so local health checks and pane input keep working.
     """
     hosts = ["127.0.0.1"]
     override = (os.environ.get("STITCHSLOP_PANE_BIND") or "").strip()
@@ -1072,43 +1227,38 @@ def bind_hosts() -> list[str]:
     parts = [h.strip() for h in override.split(",") if h.strip()]
     if parts == ["loopback"] or parts == ["127.0.0.1"]:
         return ["127.0.0.1"]
-    resolved: list[str] = []
+    extra: list[str] = []
+
+    def add(ip: str) -> None:
+        kind = classify_bind_host(ip)
+        if kind == "denied":
+            log(f"refusing STITCHSLOP_PANE_BIND address {ip}: "
+                "only loopback or an explicit Tailscale address is allowed")
+            return
+        if kind == "tailscale":
+            log(f"STITCHSLOP_PANE_BIND: binding Tailscale address {ip} "
+                "(explicit opt-in; the token-gated viewer is reachable on your tailnet)")
+        if ip not in hosts and ip not in extra:
+            extra.append(ip)
+
     for part in parts:
         if part in {"tailscale", "tailnet"}:
-            try:
-                out = subprocess.run(
-                    ["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=3,
-                    env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
-                )
-                for line in out.stdout.splitlines():
-                    ip = line.strip()
-                    if ip and ip not in resolved:
-                        resolved.append(ip)
-            except (OSError, subprocess.SubprocessError):
-                pass
-            if not resolved:
-                try:
-                    out = subprocess.run(
-                        ["ip", "-4", "-o", "addr", "show", "tailscale0"],
-                        capture_output=True, text=True, timeout=3,
-                        env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": str(Path.home()), "LANG": "C.UTF-8"},
-                    )
-                    for token in out.stdout.split():
-                        if "/" in token and token.split("/")[0].count(".") == 3:
-                            ip = token.split("/")[0]
-                            if ip not in resolved:
-                                resolved.append(ip)
-                except (OSError, subprocess.SubprocessError):
-                    pass
+            discovered = _discover_tailscale_ips()
+            if not discovered:
+                log("STITCHSLOP_PANE_BIND=tailscale was set but no Tailscale address was found")
+            for ip in discovered:
+                add(ip)
             continue
-        if part not in resolved:
-            resolved.append(part)
-    return resolved or hosts
+        add(part)
+    return hosts + extra
 
 
 def public_host() -> str:
     hosts = bind_hosts()
-    return hosts[-1] if len(hosts) > 1 else "127.0.0.1"
+    for host in reversed(hosts):
+        if classify_bind_host(host) != "loopback":
+            return host
+    return "127.0.0.1"
 
 
 def serve(port: int, relay: Relay, token: str, ready: threading.Event) -> list[ThreadingHTTPServer]:
@@ -1162,6 +1312,16 @@ def start_foreground(url: str = SITE) -> int:
         return 0
 
 
+def ping_relay(port: Any, token: str, timeout: float = 3.0) -> dict:
+    """Authenticated health check used by ensure_relay/status (never prints the token)."""
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{int(port)}/ping",
+        headers={"x-stitchslop-pane": str(token)},
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as fh:
+        return json.loads(fh.read())
+
+
 def ensure_relay(url: str = SITE, overlay: bool | None = None) -> dict:
     """Make sure Chrome + relay are up; start the relay subprocess if needed.
 
@@ -1173,8 +1333,7 @@ def ensure_relay(url: str = SITE, overlay: bool | None = None) -> dict:
         state["overlay"] = bool(overlay)
         write_state(state)
     if state.get("relayPid") and pid_alive(state["relayPid"]) and state.get("relayPort"):
-        with urllib.request.urlopen(f"http://127.0.0.1:{state['relayPort']}/ping", timeout=3) as fh:
-            ping = json.load(fh)
+        ping = ping_relay(state["relayPort"], state.get("relayToken") or "", timeout=3)
         if overlay is not None:
             _post_overlay(state["relayPort"], state.get("relayToken") or "", bool(overlay))
         return {"ok": True, "port": state["relayPort"], "token": state.get("relayToken"),
@@ -1193,10 +1352,10 @@ def ensure_relay(url: str = SITE, overlay: bool | None = None) -> dict:
         return {"ok": False, "error": "relay_failed", "message": line[:300] or "relay printed nothing"}
     if not info.get("ok"):
         return info
+    ping: dict = {}
     for _ in range(60):
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{info['port']}/ping", timeout=2) as fh:
-                ping = json.load(fh)
+            ping = ping_relay(info["port"], info["token"], timeout=2)
             if ping.get("frames", 0) > 0:
                 break
         except Exception:  # noqa: BLE001
@@ -1219,8 +1378,7 @@ def status() -> dict:
            "width": WIDTH, "height": HEIGHT, "overlay": bool(state.get("overlay", True))}
     if relay_ok:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{state['relayPort']}/ping", timeout=2) as fh:
-                out["pane"] = json.load(fh)
+            out["pane"] = ping_relay(state["relayPort"], state.get("relayToken") or "", timeout=2)
         except Exception as exc:  # noqa: BLE001
             out["pane"] = {"ok": False, "error": str(exc)}
     return out

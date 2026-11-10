@@ -14,20 +14,22 @@ list; this skill covers how to use it well.
 
 First pairing is **pane/hand only**. `stitchslop_connect` refuses a model-supplied
 `token` (`unsupported_operation` / `pair_via_pane`) so lobby, DM, or page content
-cannot talk the agent into pairing a stranger.
+cannot talk the agent into pairing a stranger. **The model must never write the
+pairing token file** — the user pastes the token by hand.
 
 1. Ask the user to open **⌁ Agent** in Stitch Slop, switch on **Enable Agent
    Connections**, and copy the `tok_…` line.
-2. Have them (or you, outside the agent tool) write it to `~/.stitchslop/token`
+2. Ask the user to paste that line themselves into `~/.stitchslop/token`
    at mode 0600, start `bridge/stitchslop_bridge.py --token-file ~/.stitchslop/token`
    once, then delete the file. That mints `~/.stitchslop/pairing.json` (0600).
 3. Call `stitchslop_connect()` with **no** token to wait for the tab. Later sessions
    only need `stitchslop_connect()`.
 4. If the window should be visible, `stitchslop_browser(action="start")` and open
-   the returned `viewerUrl` in the preview pane (`desktop_preview`).
+   the returned `viewerUrl` (it already includes `?t=`) in the preview pane
+   (`desktop_preview`).
 
 Never put a token in a shell argv string that other users can read; use `--token-file`
-on a 0600 path. Never pass `token=` to the agent tool.
+on a 0600 path. Never pass `token=` to the agent tool, and never write the token file.
 What decides whether it connects at all: `references/bridge-protocol.md`.
 
 ## 2. Drive

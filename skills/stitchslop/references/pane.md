@@ -36,23 +36,34 @@ dependency.
 2. **CORS on the relay.** The viewer is served *by* the relay, so its own fetches
    are same-origin and need nothing. A plugin pane fetching `127.0.0.1` directly is
    a different document and is usually sandboxed, which is why the pane embeds the
-   viewer instead of talking to the relay.
+   `viewerUrl` instead of talking to the relay. Opaque (`null`) and `file://`
+   origins are not CORS-granted, and `Access-Control-Allow-Private-Network` is
+   not sent.
 3. **Remote Hermes.** When the user reaches Hermes from another machine, `127.0.0.1`
    inside a pane is *their* computer. The relay binds **loopback only** by default.
-   Set `STITCHSLOP_PANE_BIND=tailscale` (or an explicit host list) when a remote
-   browser must reach the host, and any URL handed to the preview pane must come
-   from `viewerUrl` (which uses `public_host()`).
+   Set `STITCHSLOP_PANE_BIND=tailscale` (or an explicit Tailscale address in
+   `100.64.0.0/10` / `fd7a:115c:a1e0::/48`) when a remote browser must reach the
+   host. This is an explicit opt-in with a warning: anyone on that tailnet who
+   has the viewer URL can see and drive the Chrome session. Wildcards
+   (`0.0.0.0`, `::`) and public or LAN addresses are refused. Any URL handed to
+   the preview pane must come from `viewerUrl` (which uses `public_host()` and
+   includes `?t=`).
+4. **Host header.** The relay rejects any `Host` that is not the bind address
+   with the listen port, so a DNS-rebinding page cannot use the fixed ports.
 
 ## Pane UX
 
-- The pane probes `127.0.0.1:8791-8794` with an `<img>` load (images are not
-  CORS-gated for display) and embeds `/viewer` on whichever answers.
+- The pane must open the `viewerUrl` returned by `stitchslop_browser` (it includes
+  `?t=`). Unauthenticated probes of the fixed ports are rejected.
+- `/viewer` and `/` are served only when `?t=` matches the pane token (constant-time
+  compare). `/frame.jpg` and `/ping` require the token as `?t=` or the
+  `x-stitchslop-pane` header. The viewer loads frames as
+  `/frame.jpg?t=…` because an `<img>` cannot set headers.
 - The viewer polls `/frame.jpg` and swaps a single `<img>` only after the next
   frame decodes — no cross-fade, so two frames can never blend.
 - Input is forwarded as `{kind:"mouse"|"text"|"key"|"nav"}` to `/input`, gated by
-  a per-run token injected into the viewer HTML at serve time.
-- `/viewer` and `/frame.jpg` are open to anyone who can reach the port; keep the
-  relay on loopback (or a private tailnet bind you opted into), never a public interface.
+  a per-run token injected into the viewer HTML at serve time. `nav` is limited
+  to `https://stitchslop.com` and its subdomains.
 - A build marker (the token's prefix) is returned by `/ping` and the viewer reloads
   itself when it changes, so a relay restart does not need a manual refresh.
 

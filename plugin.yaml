@@ -10,10 +10,15 @@ description: >-
   art-prep script, and a bundled skill covering the digitizing workflow.
   Disclosure: writes ~/.stitchslop (pairing, Chrome profile, exports, logs), starts a
   loopback WebSocket server and a Chrome process on a private X display, and binds the
-  viewer to loopback by default (optional STITCHSLOP_PANE_BIND for extra hosts such as
-  a Tailscale address). No outbound network beyond the site itself; no credentials of
-  the user are read. First pairing is pane/hand only (Agent panel tok_… via bridge --token-file);
-  the agent tool refuses model-supplied tokens. Reconnects use the stored pairing.
+  viewer to loopback by default. STITCHSLOP_PANE_BIND may opt in to a Tailscale address
+  (100.64.0.0/10 or fd7a:115c:a1e0::/48) only — wildcards and public addresses are
+  refused. Viewer, frame, and ping require the pane token; Host must match the bind
+  address; nav is limited to https://stitchslop.com and its subdomains. No outbound
+  network beyond the site itself; no credentials of the user are read. First pairing
+  is pane/hand only (the user pastes the Agent panel tok_… into a token file and starts
+  the bridge with --token-file); the agent tool refuses model-supplied tokens and must
+  not write the token file. Reconnects use the stored pairing. Optional art scripts
+  need the 'art' extra (Pillow, NumPy).
 author: mojomast
 license: MIT
 homepage: https://github.com/mojomast/hermes-stitchslop
