@@ -56,9 +56,10 @@ The bridge never dials the page and never opens a browser. One tab per bridge.
 
 The bootstrap token is a credential: give the bridge `--token-file <path>` (0600).
 Never inject it into the process environment — anything running as the same user
-can read `/proc/<pid>/environ`. The plugin writes `~/.stitchslop/token` at 0600,
-starts the bridge with `--token-file`, and deletes the file as soon as the bridge
-is up (the bridge only reads it once). Process-environment token injection is
+can read `/proc/<pid>/environ`. The **user** pastes the token into
+`~/.stitchslop/token` at mode 0600, starts the bridge with `--token-file`, and
+deletes the file as soon as the bridge is up (the bridge only reads it once).
+The model must never write that file. Process-environment token injection is
 unsupported in this plugin, even though some protocol examples mention it for
 shell demos.
 

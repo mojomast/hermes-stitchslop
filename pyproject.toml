@@ -7,7 +7,9 @@ license = { text = "MIT" }
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pillow", "numpy"]
+# Art-prep scripts (prep_art.py, arc_text.py) only — not installed by Hermes.
+art = ["pillow>=10,<14", "numpy>=1.26,<3"]
+dev = ["pillow>=10,<14", "numpy>=1.26,<3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -215,11 +215,12 @@ def _connect(args: dict | None = None, **_kw) -> str:
                 "model-supplied token so chat or page content cannot pair a stranger."
             ),
             "fix": (
-                "In Stitch Slop open ⌁ Agent, enable connections, copy the tok_… line, "
-                "write it to ~/.stitchslop/token at mode 0600, start the bridge once with "
-                "--token-file ~/.stitchslop/token (then delete the file), and call "
-                "stitchslop_connect() with no token to wait for the tab. Later sessions "
-                "only need stitchslop_connect()."
+                "In Stitch Slop open ⌁ Agent, enable connections, and copy the tok_… line. "
+                "Ask the user to paste it themselves into ~/.stitchslop/token at mode 0600, "
+                "start the bridge once with --token-file ~/.stitchslop/token (then delete "
+                "the file), and call stitchslop_connect() with no token to wait for the tab. "
+                "The model must not write the token file. Later sessions only need "
+                "stitchslop_connect()."
             ),
         })
     result = start_bridge(None, origin, wait_seconds=wait)

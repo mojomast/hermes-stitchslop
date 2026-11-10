@@ -23,8 +23,15 @@ import math
 from collections import deque
 from pathlib import Path
 
-import numpy as np
-from PIL import Image, ImageDraw
+try:
+    import numpy as np
+    from PIL import Image, ImageDraw
+except ImportError as exc:  # pragma: no cover - optional extra
+    raise SystemExit(
+        "prep_art.py needs NumPy and Pillow. They are not required by the core plugin. "
+        "Install the optional extra: pip install 'stitchslop-hermes[art]' "
+        "(or: pip install 'numpy>=1.26,<3' 'pillow>=10,<14')."
+    ) from exc
 
 
 def ink_mask(im: Image.Image) -> np.ndarray:

@@ -18,7 +18,14 @@ import argparse
 import math
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError as exc:  # pragma: no cover - optional extra
+    raise SystemExit(
+        "arc_text.py needs Pillow. It is not required by the core plugin. "
+        "Install the optional extra: pip install 'stitchslop-hermes[art]' "
+        "(or: pip install 'pillow>=10,<14')."
+    ) from exc
 
 DEFAULT_FONTS = (
     "/usr/share/fonts/truetype/liberation/LiberationSansNarrow-Bold.ttf",

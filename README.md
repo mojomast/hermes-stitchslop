@@ -50,7 +50,8 @@ Then **pair once by hand** (the agent tool refuses a model-supplied token, same 
 Hermagotchi pane-only pairing):
 
 1. In Stitch Slop: open **⌁ Agent** → switch on **Enable Agent Connections** → **Copy**.
-2. Write the `tok_…` into `~/.stitchslop/token` at mode 0600 and start the bridge once:
+2. Paste the `tok_…` **yourself** into `~/.stitchslop/token` at mode 0600 and start
+   the bridge once. The agent must not write this file.
 
 ```sh
 mkdir -p ~/.stitchslop && chmod 700 ~/.stitchslop
@@ -93,9 +94,12 @@ Two paths, both loopback:
 
 Why the pane embeds a viewer instead of the site: the renderer blocks a sandboxed document from
 reaching loopback, and `frame-ancestors 'none'` blocks the site outright. The viewer is served by
-the relay, so its fetches are same-origin. It binds loopback by default; set
-`STITCHSLOP_PANE_BIND=tailscale` when a remote browser must reach the host (because `127.0.0.1`
-inside that browser means the viewer's machine, not the host's).
+the relay, so its fetches are same-origin. Open the `viewerUrl` returned by
+`stitchslop_browser` — it includes `?t=`, which is required to load the page, frames, and ping.
+The relay binds loopback by default; set `STITCHSLOP_PANE_BIND=tailscale` (or an explicit
+Tailscale address) when a remote browser must reach the host (because `127.0.0.1` inside that
+browser means the viewer's machine, not the host's). Wildcards such as `0.0.0.0` and public or
+LAN addresses are refused.
 
 ## Make something real
 
@@ -138,7 +142,10 @@ skills/stitchslop/
     └── prep_art.py           mask cleanup: fill holes, close gaps, scale to fit
 ```
 
-Both scripts run standalone too:
+Both scripts are optional and need Pillow and NumPy, declared in the `art` extra
+(`pip install 'stitchslop-hermes[art]'`, or `pip install 'pillow>=10,<14' 'numpy>=1.26,<3'`).
+They are not required to load the plugin. Both also run standalone:
+
 
 ```sh
 python3 skills/stitchslop/scripts/arc_text.py \
@@ -159,8 +166,15 @@ Everything stays local:
 - No outbound network beyond the site itself. No telemetry, no analytics, no fonts or CDNs in the
   viewer — it is one self-contained page.
 - The relay and bridge bind **loopback only** by default. To reach the viewer from another
-  machine on your tailnet, set `STITCHSLOP_PANE_BIND=tailscale` (or a comma-separated host list).
-  Treat the viewer as you would the app: anyone who can reach the port can see and drive it.
+  machine on your tailnet, set `STITCHSLOP_PANE_BIND=tailscale` or an explicit Tailscale
+  address in `100.64.0.0/10` / `fd7a:115c:a1e0::/48`. This is an explicit opt-in: the
+  token-gated viewer then becomes reachable on your tailnet, so treat that bind as you
+  would any other private service. Wildcards (`0.0.0.0`, `::`) and public or LAN
+  addresses are refused.
+- `/viewer` is served only with a matching `?t=`. `/frame.jpg` and `/ping` require the
+  same token (query or `x-stitchslop-pane` header). `/ping` never returns the token.
+  The relay rejects a `Host` header that is not the bind address with port.
+  `nav` events may only go to `https://stitchslop.com` and its subdomains.
 - Chrome and helper processes get a **minimal environment** — a short allowlist of non-secret
   variables, never the agent's whole process environment.
 
@@ -170,15 +184,16 @@ Everything stays local:
 python3 -m unittest discover -s tests
 ```
 
-29 tests, standard library only, plus Pillow and NumPy for the art-geometry checks. They pin the
+The unit suite (standard library, plus the optional `art` extra for geometry checks) pins the
 things that actually broke: the one-time token, the origin allowlist, the control-plane key, the
 `{"tools": […], "id": null}` envelope shape, export `files[]` persistence (and path traversal),
-the arc typesetter's geometry, and the overlay's event order, token gate and persisted flag.
+the arc typesetter's geometry, the overlay's event order, token gate and persisted flag, and
+the relay's token/Host/nav/bind gates.
 
-`hermes plugins validate` and `plugins doctor --ci` pass. `hpd_check` reports ~437 o200k schema
-tokens (+38 for the optional `overlay` argument) and no credential-environment findings: the
-bootstrap token is accepted only via `--token-file` (the plugin writes a 0600 file and deletes it
-after the bridge starts).
+`hermes plugins validate` and `plugins doctor --ci` pass. Tool schemas measure 477 o200k
+tokens (unchanged in this branch; includes the optional `overlay` argument). The bootstrap
+token is accepted only via `--token-file`. The user pastes it into a 0600 file by hand;
+the model must not write that file.
 
 ## Troubleshooting
 
