@@ -1,7 +1,7 @@
 manifest_version: 2
 api_version: 1
 name: stitchslop
-version: "0.2.1"
+version: "0.2.2"
 description: >-
   Work on the embroidery design open in Stitch Slop, watch it in a pane, and digitize
   artwork into machine stitch files. Ships the bridge its tab dials into (loopback
